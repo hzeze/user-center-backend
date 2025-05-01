@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
 import java.util.Collections;
+
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,11 +23,13 @@ import java.util.stream.Collectors;
 
 import static com.hz.usercenterbackend.constant.UserConstant.ADMIN_ROLE;
 import static com.hz.usercenterbackend.constant.UserConstant.USER_LOGIN_STATE;
+
 /**
  * 用户接口
  */
 @RestController
 @RequestMapping("/user")
+@CrossOrigin(origins = {"http://localhost:3000/"}, allowCredentials = "true")
 public class UserController {
 
     @Resource
@@ -68,11 +71,11 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public BaseResponse<Integer> logout( HttpServletRequest request) {
+    public BaseResponse<Integer> logout(HttpServletRequest request) {
         if (request == null) {
             return null;
         }
-        Integer result =  userService.userLogout( request);
+        Integer result = userService.userLogout(request);
         return ResultUtils.success(result);
     }
 
@@ -84,8 +87,8 @@ public class UserController {
      */
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest request) {
-        if (isAdmin(request)){
-            throw new BusinessException(ErrorCode.NO_AUTH,"不是管理员");
+        if (isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH, "不是管理员");
         }
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         if (StringUtils.isNotBlank(username)) {
@@ -98,14 +101,34 @@ public class UserController {
     }
 
     /**
+     * 获取当前用户
+     *
+     * @param request
+     * @return
+     */
+    @GetMapping("/current")
+    public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User currentUser = (User) userObj;
+        if (currentUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        long userId = currentUser.getId();
+        // TODO 校验用户是否合法
+        User user = userService.getById(userId);
+        User safetyUser = userService.getSafetyUser(user);
+        return ResultUtils.success(safetyUser);
+    }
+
+    /**
      * 用户管理-删除接口 必须鉴权
      *
      * @param id
      * @return
      */
     @PostMapping("/delete")
-    public BaseResponse<Boolean> delete(@RequestBody long id,HttpServletRequest request) {
-        if (isAdmin(request)){
+    public BaseResponse<Boolean> delete(@RequestBody long id, HttpServletRequest request) {
+        if (isAdmin(request)) {
             return null;
         }
         if (id <= 0) {
@@ -117,6 +140,7 @@ public class UserController {
 
     /**
      * 是否为管理员
+     *
      * @param request
      * @return
      */
